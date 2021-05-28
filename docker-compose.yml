@@ -14,8 +14,7 @@ services:
 
 networks:
   david_net:
-    name: david_net
-    driver: bridge
+    external: true
   default:
     external: true
     name: david_net
