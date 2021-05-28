@@ -3,8 +3,8 @@ version: '3.5'
 services:
 
   david_server:
-    container_name: david_php
-    image: david_php
+    container_name: raindrop
+    image: dvdkwak/apache-php-mysqli:latest
     networks:
       - david_net
     volumes:
