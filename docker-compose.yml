@@ -1,0 +1,21 @@
+version: '3.5'
+
+services:
+
+  david_server:
+    container_name: david_php
+    image: david_php
+    networks:
+      - david_net
+    volumes:
+      - ./../../projects/raindrop/:/var/www/html/
+    labels:
+      - "traefik.http.routers.david_php.rule=Host(`raindrop.localhost`)"
+
+networks:
+  david_net:
+    name: david_net
+    driver: bridge
+  default:
+    external: true
+    name: david_net
