@@ -1,21 +1,78 @@
-version: '3.5'
+version: '3.8'
 
 services:
 
-  david_server:
-    container_name: raindrop
-    image: dvdkwak/apache-php-mysqli:latest
+  php:
+    image: wodby/php:${PHP_TAG}
+    container_name: ${COMPOSE_PROJECT_NAME}_php
+    restart: unless-stopped
+    volumes:
+      - ./app:/var/www/html
+
+  web:
+    image: wodby/apache:${APACHE_TAG}
+    container_name: ${COMPOSE_PROJECT_NAME}_web
     restart: unless-stopped
     networks:
-      - david_net
+      - web
+    depends_on:
+      - ${COMPOSE_PROJECT_NAME}_php
     volumes:
-      - ./../../projects/raindrop/:/var/www/html/
+      - ./app:/var/www/html
+    environment:
+      APACHE_LOG_LEVE: debug
+      APACHE_BACKEND_HOST: ${COMPOSE_PROJECT_NAME}_php
+      APACHE_VHOST_PRESET: php
+      APACHE_DOCUMENT_ROOT: /var/www/html
     labels:
-      - "traefik.http.routers.david_php.rule=Host(`raindrop.localhost`)"
+      - traefik.enable=true
+      # HTTPS
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_web.rule=Host(`${PROJECT_BASE_URL}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_web.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_web.tls=true
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_web.tls.certresolver=le
+      # HTTP
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_web-http.rule=Host(`${PROJECT_BASE_URL}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_web-http.entrypoints=web
+
+  mariadb:
+    image: mariadb:${MARIADB_TAG}
+    container_name: ${COMPOSE_PROJECT_NAME}_mariadb
+    restart: unless-stopped
+    volumes:
+      - db_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+
+  pma:
+    image: phpmyadmin:${PMA_TAG}
+    container_name: ${COMPOSE_PROJECT_NAME}_pma
+    restart: unless-stopped
+    networks: 
+      - web
+    environment: 
+      PMA_HOST: ${COMPOSE_PROJECT_NAME}_mariadb
+    labels:
+      - traefik.enable=true
+      # HTTPS
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_pma.rule=Host(`${PMA_URL}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_pma.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_pma.tls=true
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_pma.tls.certresolver=le
+      # HTTP
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_pma-http.rule=Host(`${PMA_URL}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}_pma-http.entrypoints=web
+
+volumes:
+  db_data: {}
 
 networks:
-  david_net:
-    external: true
   default:
     external: true
-    name: david_net
+    name: ${NETWORK_NAME}
+  web:
+    external: true
+    name: ${NETWORK_NAME}
